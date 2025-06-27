@@ -1,0 +1,415 @@
+import React, { useRef, useEffect, useState, useMemo } from 'react';
+
+export const OpeningsTree = ({
+  currentPosition,
+  possibleMoves,
+  moveHistory,
+  onSelectMove,
+  loading,
+  completeTree
+}) => {
+  const treeContainerRef = useRef(null);
+  const [treeWidth, setTreeWidth] = useState(0);
+  const [treeHeight, setTreeHeight] = useState(0);
+
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (treeContainerRef.current) {
+        setTreeWidth(treeContainerRef.current.clientWidth);
+        setTreeHeight(treeContainerRef.current.clientHeight);
+      }
+    };
+    
+    updateDimensions();
+    window.addEventListener('resize', updateDimensions);
+    return () => window.removeEventListener('resize', updateDimensions);
+  }, []);
+
+  // Build the tree structure from the complete tree data
+  const treeData = useMemo(() => {
+    if (!completeTree) {
+      return null;
+    }
+
+    // Initialize with root if no moves
+    if (!completeTree.moves && moveHistory.length === 0) {
+      return {
+        nodes: [{
+          id: 'root',
+          moveSan: '',
+          depth: 0,
+          x: 0,
+          y: 50,
+          isHistory: true,
+          isCurrentPosition: true,
+          moves: [],
+          totalGames: 0,
+          winRate: 50
+        }],
+        edges: []
+      };
+    }
+
+    // Find the current position in the tree
+    let currentNode = completeTree;
+    const historyPath = [completeTree];
+    
+    // Navigate to the current position using the path
+    for (let i = 0; i < moveHistory.length; i++) {
+      const move = moveHistory[i];
+      if (currentNode.children && currentNode.children.has(move)) {
+        currentNode = currentNode.children.get(move);
+        historyPath.push(currentNode);
+      }
+    }
+
+    // Recursive function to process child nodes
+    const processNodeChildren = (node, parentId, parentDepth, levelOffsets, nodes, edges) => {
+      if (!node || !Array.isArray(node.moves) || node.moves.length === 0) return;
+      const depth = parentDepth + 1;
+      if (!levelOffsets.has(depth)) {
+        levelOffsets.set(depth, 0);
+      }
+      // Only show nodes within reasonable depth
+      const maxDepthToShow = moveHistory.length + 2;
+      if (depth > maxDepthToShow) return;
+      node.moves.forEach((moveData) => {
+        const nodeId = `${parentId}-${moveData.move}`;
+        const yOffset = levelOffsets.get(depth);
+        const isInHistory = depth <= moveHistory.length && moveHistory[depth - 1] === moveData.move;
+        const isCurrentPos = depth === moveHistory.length && isInHistory;
+        nodes.push({
+          id: nodeId,
+          moveSan: moveData.move,
+          name: typeof moveData.name === 'string' ? moveData.name : '',
+          depth: depth,
+          x: depth * 320,
+          y: yOffset * 50 + 50,
+          isHistory: isInHistory,
+          isCurrentPosition: isCurrentPos,
+          winRate: moveData.winRate || 50,
+          totalGames: moveData.totalGames || 0,
+          popularity: moveData.popularity || 0
+        });
+        edges.push({
+          from: parentId,
+          to: nodeId
+        });
+        levelOffsets.set(depth, yOffset + 1);
+        // If this move is in history and has children, process them
+        if (isInHistory && node.children && node.children.has(moveData.move)) {
+          const childNode = node.children.get(moveData.move);
+          processNodeChildren(childNode, nodeId, depth, levelOffsets, nodes, edges);
+        }
+      });
+    };
+
+    // Build the visual tree starting from the root, showing the full path
+    const buildVisualTree = () => {
+      const nodes = [];
+      const edges = [];
+      const levelOffsets = new Map(); // Track y-offset for each depth level
+      
+      // Add root node
+      nodes.push({
+        id: 'root',
+        moveSan: '',
+        depth: 0,
+        x: 0,
+        y: 50,
+        isHistory: true,
+        isCurrentPosition: moveHistory.length === 0,
+        moves: completeTree.moves || [],
+        totalGames: 0,
+        winRate: 50
+      });
+      
+      // Process moves from root
+      if (completeTree.moves && Array.isArray(completeTree.moves) && completeTree.moves.length > 0) {
+        levelOffsets.set(1, 0);
+        
+        completeTree.moves.forEach((moveData, index) => {
+          const nodeId = `root-${moveData.move}`;
+          const yOffset = levelOffsets.get(1);
+          const isInHistory = moveHistory.length > 0 && moveHistory[0] === moveData.move;
+          const isCurrentPos = moveHistory.length === 1 && moveHistory[0] === moveData.move;
+          
+          nodes.push({
+            id: nodeId,
+            moveSan: moveData.move,
+            name: typeof moveData.name === 'string' ? moveData.name : '',
+            depth: 1,
+            x: 320,
+            y: yOffset * 50 + 50,
+            isHistory: isInHistory,
+            isCurrentPosition: isCurrentPos,
+            winRate: moveData.winRate || 50,
+            totalGames: moveData.totalGames || 0,
+            popularity: moveData.popularity || 0
+          });
+          
+          edges.push({
+            from: 'root',
+            to: nodeId
+          });
+          
+          levelOffsets.set(1, yOffset + 1);
+          
+          // If this move is in history, process its children
+          if (isInHistory && completeTree.children && completeTree.children.has(moveData.move)) {
+            const childNode = completeTree.children.get(moveData.move);
+            processNodeChildren(childNode, nodeId, 1, levelOffsets, nodes, edges);
+          }
+        });
+      }
+      
+      return { nodes, edges };
+    };
+
+    return buildVisualTree();
+  }, [completeTree, moveHistory, possibleMoves]);
+
+  // Auto-scroll to current position
+  useEffect(() => {
+    if (treeContainerRef.current && treeData && treeData.nodes.length > 0) {
+      const currentNode = treeData.nodes.find(n => n.isCurrentPosition);
+      if (currentNode) {
+        const container = treeContainerRef.current;
+        const targetX = currentNode.x - treeWidth / 2 + 140; // Center horizontally
+        const targetY = currentNode.y - treeHeight / 2 + 20; // Center vertically
+        
+        container.scrollLeft = Math.max(0, targetX);
+        container.scrollTop = Math.max(0, targetY);
+      }
+    }
+  }, [treeData, treeWidth, treeHeight]);
+
+  if (!treeData) {
+    return (
+      <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: '#1a1a1a' }}>
+        <div className="text-gray-400">Loading opening tree...</div>
+      </div>
+    );
+  }
+
+  const { nodes, edges } = treeData;
+  
+  // Calculate SVG dimensions
+  const maxX = Math.max(...nodes.map(n => n.x)) + 400;
+  const maxY = Math.max(...nodes.map(n => n.y)) + 100;
+  const svgWidth = Math.max(maxX, treeWidth);
+  const svgHeight = Math.max(maxY, treeHeight);
+
+  // Render a node
+  const renderNode = (node) => {
+    const nodeWidth = 280;
+    const nodeHeight = 40;
+    
+    // Root node (starting position)
+    if (node.depth === 0) {
+      return (
+        <g key={node.id}>
+          <circle
+            cx={node.x + 15}
+            cy={node.y + nodeHeight / 2}
+            r={8}
+            fill="#8b5cf6"
+            stroke="#a78bfa"
+            strokeWidth={2}
+          />
+          <text
+            x={node.x + 30}
+            y={node.y + nodeHeight / 2 + 5}
+            fill="#e0e0e0"
+            fontSize="14"
+            fontWeight="bold"
+          >
+            Start
+          </text>
+        </g>
+      );
+    }
+
+    const getBgColor = () => {
+      if (node.isCurrentPosition) return "#6366f1"; // Indigo for current position
+      if (node.isHistory) return "#404040"; // Darker gray for history
+      if (node.isFutureMove) return "#2d2d2d"; // Dark gray for possible moves
+      return "#1f1f1f"; // Default dark
+    };
+
+    const getBorderColor = () => {
+      if (node.isCurrentPosition) return "#818cf8";
+      if (node.isHistory) return "#8b5cf6";
+      if (node.isFutureMove) return "#4b5563";
+      return "#333333";
+    };
+
+    // Calculate sections
+    const moveWidth = 60;
+    const statsWidth = 60;
+    const nameWidth = nodeWidth - moveWidth - statsWidth;
+
+    return (
+      <g key={node.id}>
+        {/* Main rectangle */}
+        <rect
+          x={node.x}
+          y={node.y}
+          width={nodeWidth}
+          height={nodeHeight}
+          fill={getBgColor()}
+          stroke={getBorderColor()}
+          strokeWidth={node.isHistory || node.isCurrentPosition ? 2 : 1}
+          rx={4}
+          className="cursor-pointer transition-all duration-200 hover:filter hover:brightness-110"
+          onClick={() => onSelectMove(node.moveSan)}
+        />
+
+        {/* Move notation */}
+        <rect
+          x={node.x}
+          y={node.y}
+          width={moveWidth}
+          height={nodeHeight}
+          fill="rgba(0,0,0,0.3)"
+          rx={4}
+        />
+        <text
+          x={node.x + moveWidth / 2}
+          y={node.y + nodeHeight / 2}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill="#ffffff"
+          fontSize="14"
+          fontWeight="bold"
+          className="select-none pointer-events-none"
+        >
+          {node.moveSan}
+        </text>
+
+        {/* Opening name */}
+        <text
+          x={node.x + moveWidth + 10}
+          y={node.y + nodeHeight / 2}
+          textAnchor="start"
+          dominantBaseline="middle"
+          fill="#e0e0e0"
+          fontSize="12"
+          className="select-none pointer-events-none"
+        >
+          {typeof node.name === 'string' && node.name.length > 20 
+            ? node.name.substring(0, 20) + '...' 
+            : node.name || ''}
+        </text>
+
+        {/* Win rate */}
+        <rect
+          x={node.x + nodeWidth - statsWidth}
+          y={node.y}
+          width={statsWidth}
+          height={nodeHeight}
+          fill={node.winRate > 52 ? 'rgba(34, 197, 94, 0.2)' : 
+                node.winRate < 48 ? 'rgba(239, 68, 68, 0.2)' : 
+                'rgba(100, 116, 139, 0.2)'}
+          rx={4}
+        />
+        <text
+          x={node.x + nodeWidth - statsWidth / 2}
+          y={node.y + nodeHeight / 2}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill={node.winRate > 52 ? '#86efac' : 
+                node.winRate < 48 ? '#fca5a5' : 
+                '#e0e0e0'}
+          fontSize="13"
+          fontWeight="bold"
+          className="select-none pointer-events-none"
+        >
+          {Math.round(node.winRate)}%
+        </text>
+
+        {/* Games count (below win rate) */}
+        {node.totalGames > 0 && (
+          <text
+            x={node.x + nodeWidth - statsWidth / 2}
+            y={node.y + nodeHeight - 5}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill="#9ca3af"
+            fontSize="10"
+            className="select-none pointer-events-none"
+          >
+            {node.totalGames > 1000000 
+              ? `${(node.totalGames / 1000000).toFixed(1)}M` 
+              : node.totalGames > 1000 
+              ? `${Math.round(node.totalGames / 1000)}k` 
+              : node.totalGames}
+          </text>
+        )}
+      </g>
+    );
+  };
+
+  // Render edges
+  const renderEdge = (edge) => {
+    const fromNode = nodes.find(n => n.id === edge.from);
+    const toNode = nodes.find(n => n.id === edge.to);
+    
+    if (!fromNode || !toNode) return null;
+
+    const nodeWidth = 280;
+    const nodeHeight = 40;
+    
+    const startX = fromNode.depth === 0 ? fromNode.x + 30 : fromNode.x + nodeWidth;
+    const startY = fromNode.y + nodeHeight / 2;
+    const endX = toNode.x;
+    const endY = toNode.y + nodeHeight / 2;
+    
+    // Create a curved path
+    const midX = (startX + endX) / 2;
+    
+    return (
+      <path
+        key={`${edge.from}-${edge.to}`}
+        d={`M ${startX} ${startY} Q ${midX} ${startY} ${midX} ${endY} T ${endX} ${endY}`}
+        stroke={toNode.isHistory ? "#8b5cf6" : 
+                toNode.isFutureMove ? "#4b5563" : 
+                "#404040"}
+        strokeWidth={toNode.isHistory ? 2 : 1}
+        fill="none"
+        opacity={toNode.isFutureMove ? 0.6 : 1}
+      />
+    );
+  };
+
+  return (
+    <div 
+      ref={treeContainerRef}
+      className="w-full h-full relative overflow-auto"
+      style={{ backgroundColor: '#1a1a1a' }}
+    >
+      <svg
+        width={svgWidth}
+        height={svgHeight}
+        className="min-w-full min-h-full"
+      >
+        {/* Render edges first (so they appear behind nodes) */}
+        <g>
+          {edges.map(edge => renderEdge(edge))}
+        </g>
+        
+        {/* Render nodes */}
+        <g>
+          {nodes.map(node => renderNode(node))}
+        </g>
+      </svg>
+      
+      {/* Loading indicator */}
+      {loading && (
+        <div className="absolute top-4 right-4 bg-gray-800 px-3 py-1 rounded text-sm text-gray-300">
+          Loading moves...
+        </div>
+      )}
+    </div>
+  );
+};
