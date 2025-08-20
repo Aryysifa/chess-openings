@@ -63,52 +63,59 @@ export const OpeningsTree = ({
       }
     }
 
-    // Recursive function to process child nodes
-    const processNodeChildren = (node, parentId, parentDepth, levelOffsets, nodes, edges) => {
-      if (!node || !Array.isArray(node.moves) || node.moves.length === 0) return;
-      const depth = parentDepth + 1;
-      if (!levelOffsets.has(depth)) {
-        levelOffsets.set(depth, 0);
-      }
-      // Only show nodes within reasonable depth
-      const maxDepthToShow = moveHistory.length + 2;
-      if (depth > maxDepthToShow) return;
-      node.moves.forEach((moveData) => {
-        const nodeId = `${parentId}-${moveData.move}`;
-        const yOffset = levelOffsets.get(depth);
-        const isInHistory = depth <= moveHistory.length && moveHistory[depth - 1] === moveData.move;
-        const isCurrentPos = depth === moveHistory.length && isInHistory;
-        nodes.push({
-          id: nodeId,
-          moveSan: moveData.move,
-          name: typeof moveData.name === 'string' ? moveData.name : '',
-          depth: depth,
-          x: depth * 320,
-          y: yOffset * 50 + 50,
-          isHistory: isInHistory,
-          isCurrentPosition: isCurrentPos,
-          winRate: moveData.winRate || 50,
-          totalGames: moveData.totalGames || 0,
-          popularity: moveData.popularity || 0
-        });
-        edges.push({
-          from: parentId,
-          to: nodeId
-        });
-        levelOffsets.set(depth, yOffset + 1);
-        // If this move is in history and has children, process them
-        if (isInHistory && node.children && node.children.has(moveData.move)) {
-          const childNode = node.children.get(moveData.move);
-          processNodeChildren(childNode, nodeId, depth, levelOffsets, nodes, edges);
-        }
-      });
-    };
-
     // Build the visual tree starting from the root, showing the full path
     const buildVisualTree = () => {
       const nodes = [];
       const edges = [];
       const levelOffsets = new Map(); // Track y-offset for each depth level
+      
+      // Recursive function to process child nodes
+      const processNodeChildren = (node, parentId, parentDepth) => {
+        if (!node || !node.moves || node.moves.length === 0) return;
+        
+        const depth = parentDepth + 1;
+        if (!levelOffsets.has(depth)) {
+          levelOffsets.set(depth, 0);
+        }
+        
+        // Only show nodes within reasonable depth
+        const maxDepthToShow = moveHistory.length + 2;
+        if (depth > maxDepthToShow) return;
+        
+        node.moves.forEach((moveData) => {
+          const nodeId = `${parentId}-${moveData.move}`;
+          const yOffset = levelOffsets.get(depth);
+          const isInHistory = depth <= moveHistory.length && moveHistory[depth - 1] === moveData.move;
+          const isCurrentPos = depth === moveHistory.length && isInHistory;
+          
+          nodes.push({
+            id: nodeId,
+            moveSan: moveData.move,
+            name: moveData.name || '',
+            depth: depth,
+            x: depth * 320,
+            y: yOffset * 50 + 50,
+            isHistory: isInHistory,
+            isCurrentPosition: isCurrentPos,
+            winRate: moveData.winRate || 50,
+            totalGames: moveData.totalGames || 0,
+            popularity: moveData.popularity || 0
+          });
+          
+          edges.push({
+            from: parentId,
+            to: nodeId
+          });
+          
+          levelOffsets.set(depth, yOffset + 1);
+          
+          // If this move is in history and has children, process them
+          if (isInHistory && node.children && node.children.has(moveData.move)) {
+            const childNode = node.children.get(moveData.move);
+            processNodeChildren(childNode, nodeId, depth);
+          }
+        });
+      };
       
       // Add root node
       nodes.push({
@@ -125,7 +132,7 @@ export const OpeningsTree = ({
       });
       
       // Process moves from root
-      if (completeTree.moves && Array.isArray(completeTree.moves) && completeTree.moves.length > 0) {
+      if (completeTree.moves && completeTree.moves.length > 0) {
         levelOffsets.set(1, 0);
         
         completeTree.moves.forEach((moveData, index) => {
@@ -137,7 +144,7 @@ export const OpeningsTree = ({
           nodes.push({
             id: nodeId,
             moveSan: moveData.move,
-            name: typeof moveData.name === 'string' ? moveData.name : '',
+            name: moveData.name || '',
             depth: 1,
             x: 320,
             y: yOffset * 50 + 50,
@@ -158,7 +165,7 @@ export const OpeningsTree = ({
           // If this move is in history, process its children
           if (isInHistory && completeTree.children && completeTree.children.has(moveData.move)) {
             const childNode = completeTree.children.get(moveData.move);
-            processNodeChildren(childNode, nodeId, 1, levelOffsets, nodes, edges);
+            processNodeChildren(childNode, nodeId, 1);
           }
         });
       }
@@ -169,20 +176,44 @@ export const OpeningsTree = ({
     return buildVisualTree();
   }, [completeTree, moveHistory, possibleMoves]);
 
-  // Auto-scroll to current position
+  // Auto-scroll to current position with smooth animation
   useEffect(() => {
     if (treeContainerRef.current && treeData && treeData.nodes.length > 0) {
       const currentNode = treeData.nodes.find(n => n.isCurrentPosition);
+      
       if (currentNode) {
-        const container = treeContainerRef.current;
-        const targetX = currentNode.x - treeWidth / 2 + 140; // Center horizontally
-        const targetY = currentNode.y - treeHeight / 2 + 20; // Center vertically
-        
-        container.scrollLeft = Math.max(0, targetX);
-        container.scrollTop = Math.max(0, targetY);
+        // Use setTimeout to ensure DOM is fully rendered
+        setTimeout(() => {
+          const container = treeContainerRef.current;
+          if (!container) return;
+          
+          // Calculate target scroll position
+          // Keep some padding on the left and show upcoming moves
+          const paddingLeft = Math.min(treeWidth * 0.2, 200);
+          const targetX = Math.max(0, currentNode.x - paddingLeft);
+          
+          // Center vertically with some padding
+          const targetY = Math.max(0, currentNode.y - treeHeight / 2 + 20);
+          
+          console.log('Scrolling to:', {
+            currentNode: { id: currentNode.id, x: currentNode.x, depth: currentNode.depth },
+            targetX,
+            targetY,
+            containerScrollWidth: container.scrollWidth,
+            containerClientWidth: container.clientWidth,
+            svgWidth: container.querySelector('svg')?.getBoundingClientRect().width
+          });
+          
+          // Use scrollTo for better browser support
+          container.scrollTo({
+            left: targetX,
+            top: targetY,
+            behavior: 'smooth'
+          });
+        }, 50);
       }
     }
-  }, [treeData, treeWidth, treeHeight]);
+  }, [treeData, treeWidth, treeHeight, moveHistory]);
 
   if (!treeData) {
     return (
@@ -247,7 +278,6 @@ export const OpeningsTree = ({
     // Calculate sections
     const moveWidth = 60;
     const statsWidth = 60;
-    const nameWidth = nodeWidth - moveWidth - statsWidth;
 
     return (
       <g key={node.id}>
@@ -297,7 +327,7 @@ export const OpeningsTree = ({
           fontSize="12"
           className="select-none pointer-events-none"
         >
-          {typeof node.name === 'string' && node.name.length > 20 
+          {node.name && node.name.length > 20 
             ? node.name.substring(0, 20) + '...' 
             : node.name || ''}
         </text>
@@ -385,13 +415,18 @@ export const OpeningsTree = ({
   return (
     <div 
       ref={treeContainerRef}
-      className="w-full h-full relative overflow-auto"
-      style={{ backgroundColor: '#1a1a1a' }}
+      className="w-full h-full relative"
+      style={{ 
+        backgroundColor: '#1a1a1a',
+        overflow: 'auto',
+        overflowX: 'auto',
+        overflowY: 'auto'
+      }}
     >
       <svg
         width={svgWidth}
         height={svgHeight}
-        className="min-w-full min-h-full"
+        style={{ display: 'block', flexShrink: 0 }}
       >
         {/* Render edges first (so they appear behind nodes) */}
         <g>
