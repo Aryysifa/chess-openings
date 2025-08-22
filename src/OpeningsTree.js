@@ -426,18 +426,18 @@ export const OpeningsTree = ({
     const endX = toNode.x;
     const endY = toNode.y + nodeHeight / 2;
     
-    // Create a curved path
-    const midX = (startX + endX) / 2;
-    
+    // Create a simple horizontal line with optional gentle curve
     return (
-      <path
+      <line
         key={`${edge.from}-${edge.to}`}
-        d={`M ${startX} ${startY} Q ${midX} ${startY} ${midX} ${endY} T ${endX} ${endY}`}
+        x1={startX}
+        y1={startY}
+        x2={endX}
+        y2={endY}
         stroke={toNode.isHistory ? "#8b5cf6" : 
                 toNode.isFutureMove ? "#4b5563" : 
                 "#404040"}
         strokeWidth={toNode.isHistory ? 2 : 1}
-        fill="none"
         opacity={toNode.isFutureMove ? 0.6 : 1}
       />
     );
