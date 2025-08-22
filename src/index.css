@@ -355,7 +355,7 @@ h1, h2, h3 {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  min-height: 600px; /* Increased from 400px */
+  min-height: 450px; /* Reduced to show scrollbar */
   background-color: #2d2d2d;
   border-radius: 8px;
   padding: 1rem;
@@ -376,7 +376,7 @@ h1, h2, h3 {
   }
   
   .info-panel {
-    min-height: 500px; /* Adjusted for smaller screens */
+    min-height: 400px; /* Adjusted for smaller screens */
   }
 }
 
@@ -399,7 +399,7 @@ h1, h2, h3 {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  min-height: 600px; /* Increased from 400px */
+  min-height: 450px; /* Reduced to show scrollbar */
   background-color: #1a1a1a;
   border-radius: 8px;
   padding: 0.5rem;

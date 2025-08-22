@@ -70,7 +70,7 @@ export const OpeningsTree = ({
       const levelOffsets = new Map(); // Track y-offset for each depth level
       
       // Recursive function to process child nodes
-      const processNodeChildren = (node, parentId, parentDepth) => {
+      const processNodeChildren = (node, parentId, parentDepth, parentPath = []) => {
         if (!node || !node.moves || node.moves.length === 0) return;
         
         const depth = parentDepth + 1;
@@ -88,18 +88,21 @@ export const OpeningsTree = ({
           const isInHistory = depth <= moveHistory.length && moveHistory[depth - 1] === moveData.move;
           const isCurrentPos = depth === moveHistory.length && isInHistory;
           
+          const fullPath = [...parentPath, moveData.move];
+          
           nodes.push({
             id: nodeId,
             moveSan: moveData.move,
             name: moveData.name || '',
             depth: depth,
-            x: depth * 320,
-            y: yOffset * 50 + 50,
+            x: 120 + (depth - 1) * 220,
+            y: yOffset * 50 + 200,
             isHistory: isInHistory,
             isCurrentPosition: isCurrentPos,
             winRate: moveData.winRate || 50,
             totalGames: moveData.totalGames || 0,
-            popularity: moveData.popularity || 0
+            popularity: moveData.popularity || 0,
+            fullPath: fullPath
           });
           
           edges.push({
@@ -112,18 +115,21 @@ export const OpeningsTree = ({
           // If this move is in history and has children, process them
           if (isInHistory && node.children && node.children.has(moveData.move)) {
             const childNode = node.children.get(moveData.move);
-            processNodeChildren(childNode, nodeId, depth);
+            processNodeChildren(childNode, nodeId, depth, fullPath);
           }
         });
       };
       
-      // Add root node
+      // Calculate center Y for root node (will be updated after processing children)
+      let rootY = 200;
+      
+      // Add root node placeholder (Y will be updated later)
       nodes.push({
         id: 'root',
         moveSan: '',
         depth: 0,
         x: 0,
-        y: 50,
+        y: rootY,
         isHistory: true,
         isCurrentPosition: moveHistory.length === 0,
         moves: completeTree.moves || [],
@@ -134,6 +140,9 @@ export const OpeningsTree = ({
       // Process moves from root
       if (completeTree.moves && completeTree.moves.length > 0) {
         levelOffsets.set(1, 0);
+        
+        // Calculate base Y position to center the tree vertically
+        const baseY = 200; // Start further down to center in viewport
         
         completeTree.moves.forEach((moveData, index) => {
           const nodeId = `root-${moveData.move}`;
@@ -146,13 +155,14 @@ export const OpeningsTree = ({
             moveSan: moveData.move,
             name: moveData.name || '',
             depth: 1,
-            x: 320,
-            y: yOffset * 50 + 50,
+            x: 120,
+            y: yOffset * 50 + baseY,
             isHistory: isInHistory,
             isCurrentPosition: isCurrentPos,
             winRate: moveData.winRate || 50,
             totalGames: moveData.totalGames || 0,
-            popularity: moveData.popularity || 0
+            popularity: moveData.popularity || 0,
+            fullPath: [moveData.move]
           });
           
           edges.push({
@@ -165,9 +175,23 @@ export const OpeningsTree = ({
           // If this move is in history, process its children
           if (isInHistory && completeTree.children && completeTree.children.has(moveData.move)) {
             const childNode = completeTree.children.get(moveData.move);
-            processNodeChildren(childNode, nodeId, 1);
+            processNodeChildren(childNode, nodeId, 1, [moveData.move]);
           }
         });
+        
+        // After processing all first-level children, center the root node
+        const firstLevelNodes = nodes.filter(n => n.depth === 1);
+        if (firstLevelNodes.length > 0) {
+          const minY = Math.min(...firstLevelNodes.map(n => n.y));
+          const maxY = Math.max(...firstLevelNodes.map(n => n.y));
+          const centerY = (minY + maxY) / 2;
+          
+          // Update root node Y position to be centered among children
+          const rootNode = nodes.find(n => n.id === 'root');
+          if (rootNode) {
+            rootNode.y = centerY;
+          }
+        }
       }
       
       return { nodes, edges };
@@ -227,13 +251,13 @@ export const OpeningsTree = ({
   
   // Calculate SVG dimensions
   const maxX = Math.max(...nodes.map(n => n.x)) + 400;
-  const maxY = Math.max(...nodes.map(n => n.y)) + 100;
+  const maxY = Math.max(...nodes.map(n => n.y)) + 200;
   const svgWidth = Math.max(maxX, treeWidth);
   const svgHeight = Math.max(maxY, treeHeight);
 
   // Render a node
   const renderNode = (node) => {
-    const nodeWidth = 280;
+    const nodeWidth = 200;
     const nodeHeight = 40;
     
     // Root node (starting position)
@@ -276,8 +300,8 @@ export const OpeningsTree = ({
     };
 
     // Calculate sections
-    const moveWidth = 60;
-    const statsWidth = 60;
+    const moveWidth = 55;
+    const statsWidth = 55;
 
     return (
       <g key={node.id}>
@@ -291,8 +315,15 @@ export const OpeningsTree = ({
           stroke={getBorderColor()}
           strokeWidth={node.isHistory || node.isCurrentPosition ? 2 : 1}
           rx={4}
-          className="cursor-pointer transition-all duration-200 hover:filter hover:brightness-110"
-          onClick={() => onSelectMove(node.moveSan)}
+          style={{ cursor: 'pointer' }}
+          onMouseEnter={(e) => {
+            e.target.style.filter = 'brightness(1.25)';
+            e.target.style.transition = 'filter 0.2s ease';
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.filter = 'brightness(1)';
+          }}
+          onClick={() => onSelectMove(node.fullPath || [node.moveSan])}
         />
 
         {/* Move notation */}
@@ -312,7 +343,7 @@ export const OpeningsTree = ({
           fill="#ffffff"
           fontSize="14"
           fontWeight="bold"
-          className="select-none pointer-events-none"
+          style={{ cursor: 'pointer', userSelect: 'none', pointerEvents: 'none' }}
         >
           {node.moveSan}
         </text>
@@ -325,7 +356,7 @@ export const OpeningsTree = ({
           dominantBaseline="middle"
           fill="#e0e0e0"
           fontSize="12"
-          className="select-none pointer-events-none"
+          style={{ cursor: 'pointer', userSelect: 'none', pointerEvents: 'none' }}
         >
           {node.name && node.name.length > 20 
             ? node.name.substring(0, 20) + '...' 
@@ -353,7 +384,7 @@ export const OpeningsTree = ({
                 '#e0e0e0'}
           fontSize="13"
           fontWeight="bold"
-          className="select-none pointer-events-none"
+          style={{ cursor: 'pointer', userSelect: 'none', pointerEvents: 'none' }}
         >
           {Math.round(node.winRate)}%
         </text>
@@ -367,7 +398,7 @@ export const OpeningsTree = ({
             dominantBaseline="middle"
             fill="#9ca3af"
             fontSize="10"
-            className="select-none pointer-events-none"
+            style={{ cursor: 'pointer', userSelect: 'none', pointerEvents: 'none' }}
           >
             {node.totalGames > 1000000 
               ? `${(node.totalGames / 1000000).toFixed(1)}M` 
@@ -387,7 +418,7 @@ export const OpeningsTree = ({
     
     if (!fromNode || !toNode) return null;
 
-    const nodeWidth = 280;
+    const nodeWidth = 200;
     const nodeHeight = 40;
     
     const startX = fromNode.depth === 0 ? fromNode.x + 30 : fromNode.x + nodeWidth;
