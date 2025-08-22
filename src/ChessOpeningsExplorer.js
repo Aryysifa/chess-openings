@@ -202,11 +202,31 @@ const ChessOpeningsExplorer = () => {
               possibleMoves={possibleMoves}
               moveHistory={moveHistory.slice(0, moveIndex + 1)}
               completeTree={treeManager.root}
-              onSelectMove={async (moveSan) => {
-                const legalMoves = game.moves({ verbose: true });
-                const matchingMove = legalMoves.find(m => m.san === moveSan);
-                if (matchingMove) {
-                  await onPieceDrop(matchingMove.from, matchingMove.to);
+              onSelectMove={async (moveSequence) => {
+                // If moveSequence is a string (old format), convert to array
+                const moves = Array.isArray(moveSequence) ? moveSequence : [moveSequence];
+                
+                // Reset game to start
+                const newGame = new Chess();
+                
+                // Play all moves in sequence
+                let validSequence = true;
+                for (let i = 0; i < moves.length; i++) {
+                  const legalMoves = newGame.moves({ verbose: true });
+                  const matchingMove = legalMoves.find(m => m.san === moves[i]);
+                  if (matchingMove) {
+                    newGame.move(matchingMove);
+                  } else {
+                    validSequence = false;
+                    break;
+                  }
+                }
+                
+                if (validSequence) {
+                  // Update game state
+                  setGame(newGame);
+                  setMoveHistory(moves);
+                  setMoveIndex(moves.length - 1);
                 }
               }}
             />
