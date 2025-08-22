@@ -143,6 +143,15 @@ export class OpeningTreeManager {
     this.cache.clear();
     this.notify();
   }
+
+  /**
+   * Set the root of the tree (for real data integration)
+   * @param {Object} newRoot - The new root node
+   */
+  setRoot(newRoot) {
+    this.root = newRoot;
+    this.notify();
+  }
 }
 
 export default OpeningTreeManager; 
