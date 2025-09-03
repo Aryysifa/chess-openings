@@ -152,18 +152,23 @@ const ChessOpeningsExplorer = () => {
 
   // Handle piece movement
   const onPieceDrop = async (sourceSquare, targetSquare) => {
-    const gameCopy = new Chess(game.fen());
-    const moveResult = gameCopy.move({
-      from: sourceSquare,
-      to: targetSquare,
-      promotion: 'q'
-    });
-    if (!moveResult) return false;
-    setGame(gameCopy);
-    const updatedHistory = [...moveHistory.slice(0, moveIndex + 1), moveResult.san];
-    setMoveHistory(updatedHistory);
-    setMoveIndex(updatedHistory.length - 1);
-    return true;
+    try {
+      const gameCopy = new Chess(game.fen());
+      const moveResult = gameCopy.move({
+        from: sourceSquare,
+        to: targetSquare,
+        promotion: 'q'
+      });
+      if (!moveResult) return false;
+      setGame(gameCopy);
+      const updatedHistory = [...moveHistory.slice(0, moveIndex + 1), moveResult.san];
+      setMoveHistory(updatedHistory);
+      setMoveIndex(updatedHistory.length - 1);
+      return true;
+    } catch (error) {
+      // Invalid move - silently return false to reject the move
+      return false;
+    }
   };
 
   // Reset the board
@@ -193,21 +198,31 @@ const ChessOpeningsExplorer = () => {
   // Go back one move
   const goBackMove = () => {
     if (moveIndex < 0) return;
-    const newGame = new Chess(game.fen());
-    newGame.undo();
+    const newMoveIndex = moveIndex - 1;
+    
+    // Reconstruct the position from the start
+    const newGame = new Chess();
+    for (let i = 0; i <= newMoveIndex; i++) {
+      newGame.move(moveHistory[i]);
+    }
+    
     setGame(newGame);
-    setMoveIndex(moveIndex - 1);
+    setMoveIndex(newMoveIndex);
   };
 
   // Go forward one move
   const goForwardMove = () => {
     if (moveIndex >= moveHistory.length - 1) return;
-    const newGame = new Chess(game.fen());
-    const nextMoveSan = moveHistory[moveIndex + 1];
-    if (!nextMoveSan) return;
-    newGame.move(nextMoveSan);
+    const newMoveIndex = moveIndex + 1;
+    
+    // Reconstruct the position from the start
+    const newGame = new Chess();
+    for (let i = 0; i <= newMoveIndex; i++) {
+      newGame.move(moveHistory[i]);
+    }
+    
     setGame(newGame);
-    setMoveIndex(moveIndex + 1);
+    setMoveIndex(newMoveIndex);
   };
 
   // Flip the board orientation
