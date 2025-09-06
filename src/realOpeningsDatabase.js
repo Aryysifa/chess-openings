@@ -19,7 +19,8 @@ export async function getRealMoves(fen, moveHistory = []) {
     console.log(`Move history: ${moveHistory.join(' ')}`);
     
     const openingData = await fetchOpeningStats(fen, {
-      moves: 15 // Get top 15 moves
+      moves: 15, // Get top 15 moves
+      moveHistory: moveHistory // Pass move history for enhanced opening names
     });
 
     if (openingData.error) {
