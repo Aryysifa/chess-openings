@@ -7,15 +7,63 @@ import { Chess } from 'chess.js';
 import { getMovesForPosition, getRealOpeningTree, preloadCommonOpenings, testRealDataIntegration } from './realOpeningsDatabase';
 import OpeningTreeManager from './OpeningTreeManager';
 
-// Helper to get moves using real data
+// Position cache for faster lookups
+const positionCache = new Map();
+
+// Helper to get cache key
+function getCacheKey(fen, moveHistory) {
+  return `${fen}:${moveHistory.join(',')}`;
+}
+
+// Helper to get moves using real data with caching
 async function getRealMoves(fen, moveHistory) {
+  const cacheKey = getCacheKey(fen, moveHistory);
+  
+  // Check cache first
+  if (positionCache.has(cacheKey)) {
+    return positionCache.get(cacheKey);
+  }
+  
   try {
     const moves = await getMovesForPosition(fen, moveHistory);
-    return moves || [];
+    const result = moves || [];
+    
+    // Cache the result
+    positionCache.set(cacheKey, result);
+    return result;
   } catch (error) {
     console.error('Error fetching opening moves:', error);
     return [];
   }
+}
+
+// Helper to preload moves for possible next positions
+async function preloadNextPositions(currentGame, possibleMoves, moveHistory) {
+  const preloadPromises = possibleMoves.map(async (move) => {
+    try {
+      const tempGame = new Chess(currentGame.fen());
+      const legalMoves = tempGame.moves({ verbose: true });
+      const matchingMove = legalMoves.find(m => m.san === move.move);
+      
+      if (matchingMove) {
+        tempGame.move(matchingMove);
+        const nextFen = tempGame.fen();
+        const nextMoveHistory = [...moveHistory, move.move];
+        const cacheKey = getCacheKey(nextFen, nextMoveHistory);
+        
+        // Only fetch if not already cached
+        if (!positionCache.has(cacheKey)) {
+          const nextMoves = await getMovesForPosition(nextFen, nextMoveHistory);
+          positionCache.set(cacheKey, nextMoves || []);
+        }
+      }
+    } catch (error) {
+      // Silently ignore preload errors
+    }
+  });
+  
+  // Run preloads in background without blocking
+  Promise.all(preloadPromises);
 }
 
 // Helper to get opening name from move history
@@ -84,6 +132,9 @@ const ChessOpeningsExplorer = () => {
         treeManager.addMoves(rootFen, rootMoves, []);
         setPossibleMoves(rootMoves);
         
+        // Preload next positions immediately
+        preloadNextPositions(newGame, rootMoves, []);
+        
         // Build the opening tree with real data
         console.log('Building opening tree with real data...');
         const realTree = await getRealOpeningTree(rootFen, [], 3);
@@ -110,7 +161,41 @@ const ChessOpeningsExplorer = () => {
       }
       const fen = tempGame.fen();
       const currentMoveHistory = moveHistory.slice(0, moveIndex + 1);
+      const cacheKey = getCacheKey(fen, currentMoveHistory);
       
+      // Optimistic UI: Check cache first for instant updates
+      if (positionCache.has(cacheKey)) {
+        const cachedMoves = positionCache.get(cacheKey);
+        treeManager.addMoves(fen, cachedMoves, currentMoveHistory);
+        setPossibleMoves(cachedMoves);
+        
+        // Update opening info immediately with cached data
+        const openingName = getOpeningNameFromHistory(currentMoveHistory);
+        if (openingName && cachedMoves.length > 0) {
+          const totalGames = cachedMoves.reduce((sum, move) => sum + move.totalGames, 0);
+          const avgWinRate = totalGames > 0 ? 
+            cachedMoves.reduce((sum, move) => sum + (move.winRate * move.totalGames), 0) / totalGames : 50;
+          const avgDrawRate = totalGames > 0 ?
+            cachedMoves.reduce((sum, move) => sum + (move.drawRate * move.totalGames), 0) / totalGames : 25;
+          
+          setCurrentOpening({
+            name: openingName,
+            winRate: Math.round(avgWinRate * 10) / 10,
+            drawRate: Math.round(avgDrawRate * 10) / 10,
+            loseRate: Math.round((100 - avgWinRate - avgDrawRate) * 10) / 10,
+            totalGames: totalGames
+          });
+        } else {
+          setCurrentOpening(null);
+        }
+        
+        // Preload next positions in background
+        preloadNextPositions(tempGame, cachedMoves, currentMoveHistory);
+        
+        return; // Exit early, no need for API call
+      }
+      
+      // If not cached, show loading and fetch
       setIsLoadingMoves(true);
       try {
         const moves = await getRealMoves(fen, currentMoveHistory);
@@ -138,6 +223,9 @@ const ChessOpeningsExplorer = () => {
           setCurrentOpening(null);
         }
         
+        // Preload next positions in background
+        preloadNextPositions(tempGame, moves, currentMoveHistory);
+        
       } catch (error) {
         console.error('Error updating moves with real data:', error);
         setPossibleMoves([]);
@@ -160,10 +248,27 @@ const ChessOpeningsExplorer = () => {
         promotion: 'q'
       });
       if (!moveResult) return false;
+      
+      // Optimistic UI: Update immediately
       setGame(gameCopy);
       const updatedHistory = [...moveHistory.slice(0, moveIndex + 1), moveResult.san];
       setMoveHistory(updatedHistory);
       setMoveIndex(updatedHistory.length - 1);
+      
+      // Check if we have cached data for the new position
+      const newFen = gameCopy.fen();
+      const newMoveHistory = updatedHistory;
+      const cacheKey = getCacheKey(newFen, newMoveHistory);
+      
+      if (positionCache.has(cacheKey)) {
+        // Instantly update UI with cached data
+        const cachedMoves = positionCache.get(cacheKey);
+        setPossibleMoves(cachedMoves);
+        treeManager.addMoves(newFen, cachedMoves, newMoveHistory);
+        // Preload next positions
+        preloadNextPositions(gameCopy, cachedMoves, newMoveHistory);
+      }
+      
       return true;
     } catch (error) {
       // Invalid move - silently return false to reject the move
