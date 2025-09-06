@@ -101,7 +101,7 @@ function transformLichessData(lichessData) {
     return {
       move: move.san,
       uci: move.uci,
-      name: getOpeningName(move.san), // We'll implement this
+      name: getOpeningName(move.san),
       winRate: Math.round(moveWhiteWin * 10) / 10,
       drawRate: Math.round(moveDrawRate * 10) / 10, 
       loseRate: Math.round(moveBlackWin * 10) / 10,
