@@ -1,6 +1,8 @@
 // Chess Data Service - Fetches real game data from Lichess and other sources
 // Replaces the local database with live statistics from actual games
 
+import { getEnhancedOpeningName } from './ecoService.js';
+
 const LICHESS_API_BASE = 'https://explorer.lichess.ovh';
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
 
@@ -15,7 +17,7 @@ const cache = new Map();
  */
 export async function fetchOpeningStats(fen, options = {}) {
   // Extract options (currently just using defaults)
-  const { moves = 12 } = options; // eslint-disable-line no-unused-vars
+  const { moves = 12, moveHistory = [] } = options; // eslint-disable-line no-unused-vars
 
   // Create cache key
   const cacheKey = `${fen}-${JSON.stringify(options)}`;
@@ -50,7 +52,7 @@ export async function fetchOpeningStats(fen, options = {}) {
     const data = await response.json();
     
     // Transform the data to match our internal format
-    const transformedData = transformLichessData(data);
+    const transformedData = await transformLichessData(data, moveHistory);
     
     // Cache the result
     cache.set(cacheKey, {
@@ -76,9 +78,10 @@ export async function fetchOpeningStats(fen, options = {}) {
 /**
  * Transforms Lichess API response to our internal format
  * @param {Object} lichessData - Raw data from Lichess API
- * @returns {Object} Transformed data
+ * @param {Array<string>} moveHistory - Current move history for context
+ * @returns {Promise<Object>} Transformed data
  */
-function transformLichessData(lichessData) {
+async function transformLichessData(lichessData, moveHistory = []) {
   const { white, draws, black, moves } = lichessData;
   
   const totalGames = white + draws + black;
@@ -88,8 +91,8 @@ function transformLichessData(lichessData) {
   const drawRate = totalGames > 0 ? (draws / totalGames) * 100 : 0;
   const blackWinRate = totalGames > 0 ? (black / totalGames) * 100 : 0;
 
-  // Transform moves data
-  const transformedMoves = moves.map(move => {
+  // Transform moves data with enhanced opening names
+  const transformedMoves = await Promise.all(moves.map(async (move) => {
     const moveTotal = move.white + move.draws + move.black;
     const moveWhiteWin = moveTotal > 0 ? (move.white / moveTotal) * 100 : 0;
     const moveDrawRate = moveTotal > 0 ? (move.draws / moveTotal) * 100 : 0;
@@ -98,17 +101,43 @@ function transformLichessData(lichessData) {
     // Calculate popularity as percentage of total games
     const popularity = totalGames > 0 ? (moveTotal / totalGames) * 100 : 0;
 
+    // Get enhanced opening name using ECO database
+    const newMoveHistory = [...moveHistory, move.san];
+    let openingName;
+    
+    try {
+      // Calculate the resulting FEN for this move
+      const { Chess } = await import('chess.js');
+      const game = new Chess();
+      
+      // Play through the move history
+      for (const historyMove of moveHistory) {
+        game.move(historyMove);
+      }
+      game.move(move.san);
+      const resultingFEN = game.fen();
+      
+      // Get enhanced opening name
+      openingName = await getEnhancedOpeningName(move.san, resultingFEN, newMoveHistory);
+    } catch (error) {
+      console.warn(`Error getting enhanced opening name for ${move.san}:`, error);
+      openingName = getBasicOpeningName(move.san);
+    }
+
     return {
       move: move.san,
       uci: move.uci,
-      name: getOpeningName(move.san),
+      name: openingName,
       winRate: Math.round(moveWhiteWin * 10) / 10,
       drawRate: Math.round(moveDrawRate * 10) / 10, 
       loseRate: Math.round(moveBlackWin * 10) / 10,
       totalGames: moveTotal,
       popularity: Math.round(popularity * 10) / 10
     };
-  }).sort((a, b) => b.totalGames - a.totalGames); // Sort by popularity
+  }));
+
+  // Sort by popularity
+  transformedMoves.sort((a, b) => b.totalGames - a.totalGames);
 
   return {
     fen: lichessData.fen,
@@ -121,12 +150,11 @@ function transformLichessData(lichessData) {
 }
 
 /**
- * Gets opening name for a move (simplified version)
- * In the future, this could use a comprehensive opening database
+ * Gets basic opening name for a move (fallback function)
  * @param {string} move - Chess move in SAN notation
  * @returns {string} Opening name
  */
-function getOpeningName(move) {
+function getBasicOpeningName(move) {
   const openingNames = {
     'e4': "King's Pawn",
     'd4': "Queen's Pawn", 
