@@ -360,23 +360,21 @@ const ChessOpeningsExplorer = () => {
 
   return (
     <div className="flex flex-col h-screen dark-app">
-      <div className="bg-gray-900 text-white p-4" style={{ backgroundColor: '#1a1a1a' }}>
-        <div className="flex items-center justify-center">
-          <div className="text-center">
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 via-purple-500 to-pink-400 bg-clip-text text-transparent">
-              ♔ Chess Openings Explorer ♕
+      <header className="modern-header">
+        <div className="header-content">
+          <div className="header-title-section">
+            <h1 className="header-title">
+              Chess Openings Explorer
             </h1>
-            <p className="text-sm text-gray-400 mt-1">Live Chess Data • Real Game Statistics</p>
-            {isLoadingMoves && (
-              <div className="mt-2">
-                <span className="text-xs px-2 py-1 bg-blue-600 rounded text-white animate-pulse">
-                  Loading...
-                </span>
-              </div>
-            )}
           </div>
+          {isLoadingMoves && (
+            <div className="loading-indicator">
+              <div className="loading-spinner"></div>
+              <span className="loading-text">Loading</span>
+            </div>
+          )}
         </div>
-      </div>
+      </header>
       <div className="chess-explorer-layout">
         {/* Left section - Chessboard and Move Tree */}
         <div className="left-panel">
