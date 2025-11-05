@@ -18,8 +18,11 @@ export async function getRealMoves(fen, moveHistory = []) {
     console.log(`Fetching real data for position: ${fen}`);
     console.log(`Move history: ${moveHistory.join(' ')}`);
     
+    // Master games have fewer but higher quality moves - request reasonable amounts
+    let requestedMoves = 20; // Masters database typically has 5-15 moves per position
+    
     const openingData = await fetchOpeningStats(fen, {
-      moves: 15, // Get top 15 moves
+      moves: requestedMoves,
       moveHistory: moveHistory // Pass move history for enhanced opening names
     });
 
@@ -30,10 +33,12 @@ export async function getRealMoves(fen, moveHistory = []) {
 
     console.log(`Found ${openingData.moves.length} moves with ${openingData.totalGames} total games`);
     
-    // Filter out moves with very low play count (less than 0.1% of total games)
-    const minGames = Math.max(10, openingData.totalGames * 0.001);
+    // Master games filtering - be permissive since these are all high-quality games
+    // Only exclude moves with very few games (less than 0.1% or minimum 2 games)
+    const minGames = Math.max(2, openingData.totalGames * 0.001);
     const filteredMoves = openingData.moves.filter(move => move.totalGames >= minGames);
     
+    console.log(`After filtering: ${filteredMoves.length} moves (from ${openingData.moves.length})`);
     return filteredMoves;
     
   } catch (error) {
@@ -63,10 +68,11 @@ export async function getRealOpeningTree(fen = STARTING_FEN, moveHistory = [], m
     const moves = await getRealMoves(fen, moveHistory);
     tree.moves = moves;
 
-    // If we haven't reached max depth, explore children for popular moves
+    // If we haven't reached max depth, explore children
     if (moveHistory.length < maxDepth) {
-      // Only explore the most popular moves to avoid too many API calls
-      const popularMoves = moves.slice(0, Math.min(8, moves.length));
+      // Use natural filtering - explore all moves that pass the filtering criteria
+      // The filtering is now done by the API response and getRealMoves() function
+      const popularMoves = moves; // No artificial slicing - use all filtered moves
       
       for (const moveData of popularMoves) {
         try {
@@ -122,6 +128,7 @@ export async function getMovesForPosition(fen, moveHistory = []) {
     popularity: move.popularity || 0
   }));
 }
+
 
 /**
  * Gets ECO (Encyclopedia of Chess Openings) code for a move sequence

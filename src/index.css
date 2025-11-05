@@ -60,6 +60,7 @@ code {
   gap: 1.5rem;
   padding: 1.5rem;
   background-color: #2d2d2d;
+  overflow: hidden;
 }
 
 .left-panel {
@@ -77,6 +78,8 @@ code {
   flex-direction: column;
   gap: 1rem;
   max-width: 55%; /* Increased from 50% */
+  height: 100%;
+  overflow: hidden;
 }
 
 /* Info sections with dark theme */
@@ -355,8 +358,8 @@ h1, h2, h3 {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  min-height: 450px; /* Reduced to show scrollbar */
-  background-color: #2d2d2d;
+  height: 100%;
+  background-color: transparent; /* Remove background that's extending */
   border-radius: 8px;
   padding: 1rem;
 }
@@ -391,34 +394,15 @@ h1, h2, h3 {
   }
 }
 
-/* Add to your existing index.css */
-
-/* Ensure the tree panel takes proper height */
-.info-panel {
-  flex: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  min-height: 450px; /* Reduced to show scrollbar */
-  background-color: #1a1a1a;
-  border-radius: 8px;
-  padding: 0.5rem;
-}
-
-/* Tree container specific styles */
-.info-panel > div {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
 
 /* Openings tree specific styles */
 .openings-tree-container {
   width: 100%;
   height: 100%;
-  background-color: #1a1a1a;
+  background-color: transparent; /* Remove background from here */
   border-radius: 4px;
-  overflow: hidden;
+  overflow: auto;
+  position: relative;
 }
 
 /* Custom scrollbar for tree */
