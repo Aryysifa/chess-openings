@@ -17,7 +17,7 @@ const cache = new Map();
  */
 export async function fetchOpeningStats(fen, options = {}) {
   // Extract options (currently just using defaults)
-  const { moves = 12, moveHistory = [] } = options; // eslint-disable-line no-unused-vars
+  const { moves = 15, moveHistory = [] } = options; // eslint-disable-line no-unused-vars
 
   // Create cache key
   const cacheKey = `${fen}-${JSON.stringify(options)}`;
@@ -31,10 +31,12 @@ export async function fetchOpeningStats(fen, options = {}) {
   try {
     // Build query parameters
     const params = new URLSearchParams({
-      fen: fen
+      fen: fen,
+      moves: moves.toString() // Include the moves parameter in the API request
     });
 
-    const url = `${LICHESS_API_BASE}/lichess?${params}`;
+    // Use master games database instead of regular lichess database for better quality moves
+    const url = `${LICHESS_API_BASE}/masters?${params}`;
     
     console.log('Fetching opening data from:', url);
 

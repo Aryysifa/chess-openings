@@ -15,14 +15,20 @@ export const OpeningsTree = ({
   useEffect(() => {
     const updateDimensions = () => {
       if (treeContainerRef.current) {
-        setTreeWidth(treeContainerRef.current.clientWidth);
-        setTreeHeight(treeContainerRef.current.clientHeight);
+        const width = treeContainerRef.current.clientWidth;
+        // Don't track height to prevent re-expansion
+        setTreeWidth(width);
+        // setTreeHeight(height); // COMMENTED OUT to prevent expansion
       }
     };
     
-    updateDimensions();
+    // Use a small delay to ensure DOM is ready
+    const timer = setTimeout(updateDimensions, 100);
     window.addEventListener('resize', updateDimensions);
-    return () => window.removeEventListener('resize', updateDimensions);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', updateDimensions);
+    };
   }, []);
 
   // Build the tree structure from the complete tree data
@@ -30,6 +36,9 @@ export const OpeningsTree = ({
     if (!completeTree) {
       return null;
     }
+
+    // Calculate max allowed height first
+    const maxAllowedHeight = Math.min(window.innerHeight - 200, 600);
 
     // Initialize with root if no moves
     if (!completeTree.moves && moveHistory.length === 0) {
@@ -69,22 +78,24 @@ export const OpeningsTree = ({
       const edges = [];
       const levelOffsets = new Map(); // Track y-offset for each depth level
       
-      // Recursive function to process child nodes
+      // Recursive function to process child nodes with centered positioning
       const processNodeChildren = (node, parentId, parentDepth, parentPath = []) => {
         if (!node || !node.moves || node.moves.length === 0) return;
         
         const depth = parentDepth + 1;
-        if (!levelOffsets.has(depth)) {
-          levelOffsets.set(depth, 0);
-        }
         
         // Only show nodes within reasonable depth
         const maxDepthToShow = moveHistory.length + 2;
         if (depth > maxDepthToShow) return;
         
-        node.moves.forEach((moveData) => {
+        // Calculate spacing to fit child nodes within available height
+        const totalChildMoves = node.moves.length;
+        const availableHeight = maxAllowedHeight - 100; // Leave margins
+        const nodeSpacing = Math.min(50, availableHeight / (totalChildMoves + 1)); // Dynamic spacing
+        const startY = (maxAllowedHeight - (totalChildMoves - 1) * nodeSpacing) / 2; // Center vertically
+        
+        node.moves.forEach((moveData, index) => {
           const nodeId = `${parentId}-${moveData.move}`;
-          const yOffset = levelOffsets.get(depth);
           const isInHistory = depth <= moveHistory.length && moveHistory[depth - 1] === moveData.move;
           const isCurrentPos = depth === moveHistory.length && isInHistory;
           
@@ -96,7 +107,7 @@ export const OpeningsTree = ({
             name: moveData.name || '',
             depth: depth,
             x: 120 + (depth - 1) * 220,
-            y: yOffset * 50 + 200,
+            y: startY + index * nodeSpacing,
             isHistory: isInHistory,
             isCurrentPosition: isCurrentPos,
             winRate: moveData.winRate || 50,
@@ -110,8 +121,6 @@ export const OpeningsTree = ({
             to: nodeId
           });
           
-          levelOffsets.set(depth, yOffset + 1);
-          
           // If this move is in history and has children, process them
           if (isInHistory && node.children && node.children.has(moveData.move)) {
             const childNode = node.children.get(moveData.move);
@@ -121,7 +130,7 @@ export const OpeningsTree = ({
       };
       
       // Calculate center Y for root node (will be updated after processing children)
-      let rootY = 200;
+      let rootY = 100;
       
       // Add root node placeholder (Y will be updated later)
       nodes.push({
@@ -139,14 +148,14 @@ export const OpeningsTree = ({
       
       // Process moves from root
       if (completeTree.moves && completeTree.moves.length > 0) {
-        levelOffsets.set(1, 0);
-        
-        // Calculate base Y position to center the tree vertically
-        const baseY = 200; // Start further down to center in viewport
+        // Calculate spacing to fit within available height
+        const availableHeight = maxAllowedHeight - 100; // Leave margins
+        const totalMoves = completeTree.moves.length;
+        const nodeSpacing = Math.min(50, availableHeight / (totalMoves + 1)); // Dynamic spacing
+        const startY = (maxAllowedHeight - (totalMoves - 1) * nodeSpacing) / 2; // Center vertically
         
         completeTree.moves.forEach((moveData, index) => {
           const nodeId = `root-${moveData.move}`;
-          const yOffset = levelOffsets.get(1);
           const isInHistory = moveHistory.length > 0 && moveHistory[0] === moveData.move;
           const isCurrentPos = moveHistory.length === 1 && moveHistory[0] === moveData.move;
           
@@ -156,7 +165,7 @@ export const OpeningsTree = ({
             name: moveData.name || '',
             depth: 1,
             x: 120,
-            y: yOffset * 50 + baseY,
+            y: startY + index * nodeSpacing,
             isHistory: isInHistory,
             isCurrentPosition: isCurrentPos,
             winRate: moveData.winRate || 50,
@@ -169,8 +178,6 @@ export const OpeningsTree = ({
             from: 'root',
             to: nodeId
           });
-          
-          levelOffsets.set(1, yOffset + 1);
           
           // If this move is in history, process its children
           if (isInHistory && completeTree.children && completeTree.children.has(moveData.move)) {
@@ -194,7 +201,12 @@ export const OpeningsTree = ({
         }
       }
       
-      return { nodes, edges };
+      // Calculate SVG dimensions
+      const maxX = Math.max(...nodes.map(n => n.x)) + 400;
+      const svgWidth = Math.max(maxX, treeWidth);
+      const svgHeight = maxAllowedHeight; // FIXED HEIGHT based on screen size
+      
+      return { nodes, edges, svgWidth, svgHeight };
     };
 
     return buildVisualTree();
@@ -247,13 +259,7 @@ export const OpeningsTree = ({
     );
   }
 
-  const { nodes, edges } = treeData;
-  
-  // Calculate SVG dimensions
-  const maxX = Math.max(...nodes.map(n => n.x)) + 400;
-  const maxY = Math.max(...nodes.map(n => n.y)) + 200;
-  const svgWidth = Math.max(maxX, treeWidth);
-  const svgHeight = Math.max(maxY, treeHeight);
+  const { nodes, edges, svgWidth, svgHeight } = treeData;
 
   // Render a node
   const renderNode = (node) => {
@@ -446,18 +452,16 @@ export const OpeningsTree = ({
   return (
     <div 
       ref={treeContainerRef}
-      className="w-full h-full relative"
+      className="openings-tree-container"
       style={{ 
-        backgroundColor: '#1a1a1a',
         overflow: 'auto',
-        overflowX: 'auto',
-        overflowY: 'auto'
+        height: '100%'
       }}
     >
       <svg
         width={svgWidth}
         height={svgHeight}
-        style={{ display: 'block', flexShrink: 0 }}
+        style={{ display: 'block', flexShrink: 0, backgroundColor: '#1a1a1a' }}
       >
         {/* Render edges first (so they appear behind nodes) */}
         <g>
