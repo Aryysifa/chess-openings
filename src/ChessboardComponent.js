@@ -123,38 +123,82 @@ export const ChessboardComponent = ({ position, onPieceDrop, arrows = [], orient
     });
   };
 
+  // Generate coordinate labels
+  const renderCoordinates = () => {
+    const files = orientation === 'white' ? ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] : ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'];
+    const ranks = orientation === 'white' ? ['8', '7', '6', '5', '4', '3', '2', '1'] : ['1', '2', '3', '4', '5', '6', '7', '8'];
+    const squareSize = boardSize / 8;
+
+    return (
+      <>
+        {/* File labels (a-h) at bottom */}
+        <div className="coordinate-files coordinate-files-bottom">
+          {files.map((file, index) => (
+            <div
+              key={`file-bottom-${file}`}
+              className="coordinate-label"
+              style={{ left: `${index * squareSize + squareSize / 2}px` }}
+            >
+              {file}
+            </div>
+          ))}
+        </div>
+        
+        {/* Rank labels (1-8) on left */}
+        <div className="coordinate-ranks coordinate-ranks-left">
+          {ranks.map((rank, index) => (
+            <div
+              key={`rank-left-${rank}`}
+              className="coordinate-label"
+              style={{ top: `${index * squareSize + squareSize / 2}px` }}
+            >
+              {rank}
+            </div>
+          ))}
+        </div>
+      </>
+    );
+  };
+
   return (
     <div className="board-container flex justify-center items-center h-full w-full" ref={boardRef}>
-      <div style={{ width: `${boardSize}px`, maxWidth: '100%', position: 'relative' }}>
-        <Chessboard
-          id="main-board"
-          position={position}
-          onPieceDrop={onPieceDrop}
-          boardOrientation={orientation}
-          areArrowsAllowed={false}
-          animationDuration={200}
-          customBoardStyle={{
-            borderRadius: '4px',
-            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)'
-          }}
-          customDarkSquareStyle={{ backgroundColor: '#b58863' }}
-          customLightSquareStyle={{ backgroundColor: '#f0d9b5' }}
-        />
+      <div className="chessboard-with-coordinates" style={{ position: 'relative' }}>
+        <div className="chessboard-wrapper" style={{ width: `${boardSize}px`, maxWidth: '100%', position: 'relative' }}>
+          <Chessboard
+            id="main-board"
+            position={position}
+            onPieceDrop={onPieceDrop}
+            boardOrientation={orientation}
+            areArrowsAllowed={false}
+            animationDuration={200}
+            showBoardCoordinates={false}
+            showNotation={false}
+            customBoardStyle={{
+              borderRadius: '4px',
+              boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)'
+            }}
+            customDarkSquareStyle={{ backgroundColor: '#b58863' }}
+            customLightSquareStyle={{ backgroundColor: '#f0d9b5' }}
+          />
+          
+          {/* SVG overlay for custom arrows */}
+          <svg
+            ref={svgRef}
+            width={boardSize}
+            height={boardSize}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              pointerEvents: 'none'
+            }}
+          >
+            {renderArrows()}
+          </svg>
+        </div>
         
-        {/* SVG overlay for custom arrows */}
-        <svg
-          ref={svgRef}
-          width={boardSize}
-          height={boardSize}
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            pointerEvents: 'none'
-          }}
-        >
-          {renderArrows()}
-        </svg>
+        {/* External coordinate labels */}
+        {renderCoordinates()}
       </div>
     </div>
   );

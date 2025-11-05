@@ -423,3 +423,191 @@ h1, h2, h3 {
 .openings-tree-container::-webkit-scrollbar-thumb:hover {
   background: #6b7280;
 }
+
+/* Modern Header Styles */
+.modern-header {
+  background: linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.75rem 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.modern-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.03), transparent);
+  animation: shimmer 3s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.header-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  z-index: 1;
+}
+
+.header-title-section {
+  text-align: center;
+  flex: 1;
+}
+
+.header-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: white;
+  text-align: center;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  margin: 0;
+}
+
+
+.loading-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 9999px;
+  padding: 0.5rem 1rem;
+  backdrop-filter: blur(8px);
+}
+
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(59, 130, 246, 0.3);
+  border-top: 2px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.loading-text {
+  font-size: 0.8125rem;
+  color: #60a5fa;
+  font-weight: 500;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .modern-header {
+    padding: 0.5rem 1rem;
+  }
+  
+  .header-content {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .header-title {
+    font-size: 1.25rem;
+  }
+}
+
+/* Chessboard Coordinate Styles */
+.chessboard-with-coordinates {
+  padding: 25px;
+}
+
+.coordinate-files,
+.coordinate-ranks {
+  position: absolute;
+  pointer-events: none;
+}
+
+.coordinate-label {
+  position: absolute;
+  color: #e0e0e0;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+/* File coordinates (a-h) */
+.coordinate-files-bottom {
+  bottom: 5px;
+  left: 25px;
+  right: 25px;
+  height: 20px;
+}
+
+.coordinate-files-top {
+  top: 5px;
+  left: 25px;
+  right: 25px;
+  height: 20px;
+}
+
+.coordinate-files .coordinate-label {
+  transform: translateX(-50%);
+  width: 20px;
+  height: 20px;
+}
+
+/* Rank coordinates (1-8) */
+.coordinate-ranks-left {
+  left: 5px;
+  top: 25px;
+  bottom: 25px;
+  width: 20px;
+}
+
+.coordinate-ranks-right {
+  right: 5px;
+  top: 25px;
+  bottom: 25px;
+  width: 20px;
+}
+
+.coordinate-ranks .coordinate-label {
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+}
+
+/* Alternative approach - clip the board to hide coordinate overflow */
+#main-board {
+  overflow: hidden !important;
+  position: relative !important;
+}
+
+#main-board > div {
+  overflow: hidden !important;
+}
+
+/* Hide any text-containing divs within the board */
+#main-board div:not([class]):not([id]) {
+  color: transparent !important;
+  font-size: 0 !important;
+  visibility: hidden !important;
+}
+
+/* More aggressive coordinate hiding */
+#main-board * {
+  font-family: inherit !important;
+}
+
+#main-board div[style*="font"] {
+  display: none !important;
+}
