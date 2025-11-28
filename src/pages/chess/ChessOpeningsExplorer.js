@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import Header from '../../components/Header';
 import { ChessboardComponent } from './ChessboardComponent';
 import { OpeningSelector } from './OpeningSelector';
 import { MoveTree } from './MoveTree';
@@ -359,22 +360,8 @@ const ChessOpeningsExplorer = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen dark-app">
-      <header className="modern-header">
-        <div className="header-content">
-          <div className="header-title-section">
-            <h1 className="header-title">
-              Chess Openings Explorer
-            </h1>
-          </div>
-          {isLoadingMoves && (
-            <div className="loading-indicator">
-              <div className="loading-spinner"></div>
-              <span className="loading-text">Loading</span>
-            </div>
-          )}
-        </div>
-      </header>
+    <div className="flex flex-col flex-1 dark-app" style={{ height: '100vh' }}>
+      <Header title="Chess Openings Explorer" loading={isLoadingMoves} />
       <div className="chess-explorer-layout">
         {/* Left section - Chessboard and Move Tree */}
         <div className="left-panel">
@@ -407,13 +394,6 @@ const ChessOpeningsExplorer = () => {
                 </div>
               </div>
             </div>
-          </div>
-          <div className="panel">
-            <MoveTree
-              moves={moveHistory}
-              currentOpening={currentOpening}
-              currentMoveIndex={moveIndex}
-            />
           </div>
         </div>
         {/* Right section - OpeningsTree and OpeningSelector */}
