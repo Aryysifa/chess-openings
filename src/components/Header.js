@@ -46,6 +46,41 @@ const Header = ({ title, loading = false, children }) => {
           <path d="M12 6 C12 8 13 9 14 10 C15 11 15 12 14 13 C13 14 12 15 12 17" strokeLinecap="round" />
         </svg>
       )
+    },
+    {
+      label: 'Connect4 guide',
+      url: '/connect4',
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          {/* Connect4 grid */}
+          <path d="M3 3 L21 3 L21 21 L3 21 Z M6 6 L6 18 M9 6 L9 18 M12 6 L12 18 M15 6 L15 18 M18 6 L18 18 M3 9 L21 9 M3 12 L21 12 M3 15 L21 15 M3 18 L21 18" stroke="currentColor" strokeWidth="0.5" fill="none"/>
+          {/* Game pieces */}
+          <circle cx="7.5" cy="7.5" r="1" />
+          <circle cx="10.5" cy="10.5" r="1" />
+          <circle cx="13.5" cy="13.5" r="1" />
+          <circle cx="16.5" cy="16.5" r="1" />
+        </svg>
+      )
+    },
+    {
+      label: 'Checkers guide',
+      url: '/checkers',
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          {/* Checkerboard pattern */}
+          <rect x="3" y="3" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1"/>
+          <rect x="3" y="3" width="4.5" height="4.5" />
+          <rect x="12" y="3" width="4.5" height="4.5" />
+          <rect x="7.5" y="7.5" width="4.5" height="4.5" />
+          <rect x="16.5" y="7.5" width="4.5" height="4.5" />
+          <rect x="3" y="12" width="4.5" height="4.5" />
+          <rect x="12" y="12" width="4.5" height="4.5" />
+          <rect x="7.5" y="16.5" width="4.5" height="4.5" />
+          <rect x="16.5" y="16.5" width="4.5" height="4.5" />
+          {/* Checker piece */}
+          <circle cx="10.5" cy="5.5" r="1.5" fill="white" stroke="currentColor" strokeWidth="0.5"/>
+        </svg>
+      )
     }
   ];
 
