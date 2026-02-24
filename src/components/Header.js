@@ -81,6 +81,16 @@ const Header = ({ title, loading = false, children }) => {
           <circle cx="10.5" cy="5.5" r="1.5" fill="white" stroke="currentColor" strokeWidth="0.5"/>
         </svg>
       )
+    },
+    {
+      label: 'Brain Games',
+      url: '/brain-games',
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          {/* Puzzle pieces */}
+          <path d="M20 14C21.1 14 22 13.1 22 12C22 10.9 21.1 10 20 10V6C20 4.9 19.1 4 18 4H14C14 2.9 13.1 2 12 2C10.9 2 10 2.9 10 4H6C4.9 4 4 4.9 4 6V10C2.9 10 2 10.9 2 12C2 13.1 2.9 14 4 14V18C4 19.1 4.9 20 6 20H10C10 21.1 10.9 22 12 22C13.1 22 14 21.1 14 20H18C19.1 20 20 19.1 20 18V14M18 18H14.5C14.5 16.6 13.4 15.5 12 15.5C10.6 15.5 9.5 16.6 9.5 18H6V14.5C7.4 14.5 8.5 13.4 8.5 12C8.5 10.6 7.4 9.5 6 9.5V6H9.5C9.5 7.4 10.6 8.5 12 8.5C13.4 8.5 14.5 7.4 14.5 6H18V9.5C16.6 9.5 15.5 10.6 15.5 12C15.5 13.4 16.6 14.5 18 14.5V18Z"/>
+        </svg>
+      )
     }
   ];
 

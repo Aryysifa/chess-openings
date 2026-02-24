@@ -8,6 +8,7 @@ import PokerGuide from './pages/poker/PokerGuide';
 import IQTest from './pages/iq-test/IQTest';
 import Connect4Guide from './pages/connect4/Connect4Guide';
 import CheckersGuide from './pages/checkers/CheckersGuide';
+import BrainGames from './pages/brain-games/BrainGames';
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
           <Route path="/iq-test" element={<IQTest />} />
           <Route path="/connect4" element={<Connect4Guide />} />
           <Route path="/checkers" element={<CheckersGuide />} />
+          <Route path="/brain-games" element={<BrainGames />} />
         </Routes>
       </div>
     </Router>
