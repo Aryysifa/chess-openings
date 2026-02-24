@@ -1,12 +1,12 @@
 // ECO (Encyclopedia of Chess Openings) Service
 // Provides comprehensive opening name lookup using the ECO.json database
 
-import ecoA from './data/ecoA.json';
-import ecoB from './data/ecoB.json';
-import ecoC from './data/ecoC.json';
-import ecoD from './data/ecoD.json';
-import ecoE from './data/ecoE.json';
-import ecoInterpolated from './data/eco_interpolated.json';
+import ecoA from '../../data/ecoA.json';
+import ecoB from '../../data/ecoB.json';
+import ecoC from '../../data/ecoC.json';
+import ecoD from '../../data/ecoD.json';
+import ecoE from '../../data/ecoE.json';
+import ecoInterpolated from '../../data/eco_interpolated.json';
 
 // Combined ECO database for fast lookup
 let combinedECODatabase = null;

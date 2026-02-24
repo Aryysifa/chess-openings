@@ -201,11 +201,14 @@ export const OpeningsTree = ({
         }
       }
       
-      // Calculate SVG dimensions
+      // Calculate SVG dimensions based on actual content
       const maxX = Math.max(...nodes.map(n => n.x)) + 400;
       const svgWidth = Math.max(maxX, treeWidth);
-      const svgHeight = maxAllowedHeight; // FIXED HEIGHT based on screen size
-      
+
+      // Calculate actual height needed based on node positions
+      const maxY = nodes.length > 0 ? Math.max(...nodes.map(n => n.y)) : 0;
+      const svgHeight = Math.max(maxY + 100, 200); // Add padding, min 200px
+
       return { nodes, edges, svgWidth, svgHeight };
     };
 
@@ -450,30 +453,31 @@ export const OpeningsTree = ({
   };
 
   return (
-    <div 
+    <div
       ref={treeContainerRef}
-      className="openings-tree-container"
-      style={{ 
+      className="openings-tree-wrapper"
+      style={{
+        maxHeight: '100%',
         overflow: 'auto',
-        height: '100%'
+        position: 'relative'
       }}
     >
       <svg
         width={svgWidth}
         height={svgHeight}
-        style={{ display: 'block', flexShrink: 0, backgroundColor: '#1a1a1a' }}
+        style={{ display: 'block', backgroundColor: '#1a1a1a' }}
       >
         {/* Render edges first (so they appear behind nodes) */}
         <g>
           {edges.map(edge => renderEdge(edge))}
         </g>
-        
+
         {/* Render nodes */}
         <g>
           {nodes.map(node => renderNode(node))}
         </g>
       </svg>
-      
+
       {/* Loading indicator */}
       {loading && (
         <div className="absolute top-4 right-4 bg-gray-800 px-3 py-1 rounded text-sm text-gray-300">
