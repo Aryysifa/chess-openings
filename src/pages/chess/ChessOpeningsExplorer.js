@@ -87,6 +87,14 @@ function getOpeningNameFromHistory(moveHistory) {
   return openingNames[firstMove] || 'Unknown Opening';
 }
 
+const FEATURED_OPENINGS = [
+  { name: 'Sicilian Defense', moves: ['e4', 'c5'] },
+  { name: "Queen's Gambit", moves: ['d4', 'd5', 'c4'] },
+  { name: "King's Indian Defense", moves: ['d4', 'Nf6'] },
+  { name: 'Ruy Lopez', moves: ['e4', 'e5', 'Nf3', 'Nc6', 'Bb5'] },
+  { name: 'French Defense', moves: ['e4', 'e6'] },
+];
+
 const ChessOpeningsExplorer = () => {
   const [game, setGame] = useState(new Chess());
   const [moveHistory, setMoveHistory] = useState([]);
@@ -96,7 +104,10 @@ const ChessOpeningsExplorer = () => {
   const [possibleMoves, setPossibleMoves] = useState([]);
   const [treeVersion, setTreeVersion] = useState(0); // For triggering re-renders
   const [isLoadingMoves, setIsLoadingMoves] = useState(false);
+  const [openingDropdownOpen, setOpeningDropdownOpen] = useState(false);
   // Always using real data now
+
+  const exploreSectionRef = useRef(null);
 
   // Tree manager instance (singleton for this component)
   const treeManagerRef = useRef(null);
@@ -336,6 +347,35 @@ const ChessOpeningsExplorer = () => {
     setBoardOrientation(boardOrientation === 'white' ? 'black' : 'white');
   };
 
+  // Navigate the board to a specific move sequence
+  const navigateToMoves = (moves) => {
+    const newGame = new Chess();
+    let valid = true;
+    for (const move of moves) {
+      const legal = newGame.moves({ verbose: true });
+      const match = legal.find(m => m.san === move);
+      if (match) {
+        newGame.move(match);
+      } else {
+        valid = false;
+        break;
+      }
+    }
+    if (valid) {
+      setGame(newGame);
+      setMoveHistory(moves);
+      setMoveIndex(moves.length - 1);
+    }
+    setOpeningDropdownOpen(false);
+  };
+
+  const scrollToExplore = () => {
+    setOpeningDropdownOpen(false);
+    if (exploreSectionRef.current) {
+      exploreSectionRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   // Get arrows for the chessboard
   const getArrowsWithAnnotations = () => {
     const arrows = [];
@@ -360,7 +400,7 @@ const ChessOpeningsExplorer = () => {
   };
 
   return (
-    <div className="flex flex-col flex-1 dark-app" style={{ height: '100vh' }}>
+    <div className="flex flex-col flex-1 dark-app" style={{ minHeight: '100vh' }}>
       <Header title="Chess Openings Explorer" loading={isLoadingMoves} />
       <div className="chess-explorer-layout">
         {/* Left section - Chessboard and Move Tree */}
@@ -398,7 +438,55 @@ const ChessOpeningsExplorer = () => {
         </div>
         {/* Right section - OpeningsTree and OpeningSelector */}
         <div className="right-panel">
-          <div className="panel info-panel">
+          <div className="panel info-panel" style={{ position: 'relative' }}>
+            {/* Choose an opening line dropdown — absolute overlay inside the tree background */}
+            <div
+              style={{ position: 'absolute', top: '14px', left: '50%', transform: 'translateX(-50%)', zIndex: 10 }}
+              onBlur={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget)) {
+                  setTimeout(() => setOpeningDropdownOpen(false), 150);
+                }
+              }}
+            >
+              <button
+                className={`opening-line-btn${openingDropdownOpen ? ' open' : ''}`}
+                onClick={() => setOpeningDropdownOpen(o => !o)}
+              >
+                <span>Choose an opening line</span>
+                <svg
+                  className="opening-line-chevron"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 14 14"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path d="M2.5 5L7 9.5L11.5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+              {openingDropdownOpen && (
+                <div className="opening-line-dropdown">
+                  {FEATURED_OPENINGS.map(opening => (
+                    <button
+                      key={opening.name}
+                      className="opening-line-item"
+                      onClick={() => navigateToMoves(opening.moves)}
+                    >
+                      {opening.name}
+                    </button>
+                  ))}
+                  <button
+                    className="opening-line-item explore"
+                    onClick={scrollToExplore}
+                  >
+                    <span>Explore openings</span>
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M7 2.5L11.5 7L7 11.5M2.5 7H11.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+                </div>
+              )}
+            </div>
             <OpeningsTree
               currentPosition={game.fen()}
               possibleMoves={possibleMoves}
@@ -435,6 +523,11 @@ const ChessOpeningsExplorer = () => {
             />
           </div>
         </div>
+      </div>
+      {/* Explore openings placeholder — content to be implemented */}
+      <div ref={exploreSectionRef} className="explore-openings-section">
+        <h2>Explore Openings</h2>
+        <p>Opening explorer coming soon...</p>
       </div>
     </div>
   );
